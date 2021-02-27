@@ -9,7 +9,7 @@ import (
 	"math/rand"
 	"reflect"
 
-	"strconv"
+	// "strconv"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -21,56 +21,8 @@ type Client struct {
 	Pool *Pool
 }
 
-type GenericRequest struct {
-	Message string                 `json:"message"`
-	Data    map[string]interface{} `json:"-"`
-}
 
-type RegistrationRequest struct {
-	Message    string `json:"message"`
-	PlayerName string `json:"playerName"`
-	Timestamp  int64  `json:"timestamp"`
-}
 
-type RegistrationResponse struct {
-	Message    string `json:"message"`
-	PlayerName string `json:"playerName"`
-	Timestamp  int64  `json:"timestamp"`
-	GameId     int64  `json:"gameId"`
-}
-
-type GuessRequest struct {
-	Message   string `json:"message"`
-	Guess     int    `json:"guess"`
-	Timestamp int64  `json:"timestamp"`
-	GameId    int64  `json:"gameId"`
-}
-
-type GuessResponse struct {
-	Message     string `json:"message"`
-	GuessResult int    `json:"guessResult"`
-	Timestamp   int64  `json:"timestamp"`
-	GameId      int64  `json:"gameId"`
-}
-
-type WinResponse struct {
-	Message string `json:"message"`
-	Answer  int    `json:"answer"`
-	Winner  string `json:"winner"`
-	GameId  int64  `json:"gameId"`
-}
-
-type StartResponse struct {
-	Message   string `json:"message"`
-	Timestamp int64  `json:"timestamp"`
-	GameId    int64  `json:"gameId"`
-}
-
-type ErrorResponse struct {
-	Message   string `json:"message"`
-	Reason    string `json:"reason"`
-	Timestamp int64  `json:"timestamp"`
-}
 
 func strToHashStr(input string) string {
 	b := []byte(input)
@@ -141,25 +93,10 @@ func inputValid(input map[string]interface{}, c *Client) bool {
 		return true
 	}
 
+	c.Conn.WriteJSON(ErrorResponse{Message: strToHashStr("error"), Reason: "I don't understand...", Timestamp: time.Now().UnixNano()})
 	return false
 }
 
-func checkHash(hashString string) string {
-	registration := []byte("registration")
-	guess := []byte("guess")
-
-	registrationHash := sha256.Sum256(registration[:])
-	guessHash := sha256.Sum256(guess[:])
-
-	switch hashString {
-	case hex.EncodeToString(registrationHash[:]):
-		return "registration"
-	case hex.EncodeToString(guessHash[:]):
-		return "guess"
-	default:
-		return "?"
-	}
-}
 
 func (c *Client) Read() {
 	defer func() {
@@ -174,8 +111,6 @@ func (c *Client) Read() {
 			return
 		}
 
-		// message := Message{Type: messageType, Body: string(p)}
-
 		var tmp map[string]interface{}
 		json.Unmarshal([]byte(string(p)), &tmp)
 		if inputValid(tmp, c) != true {
@@ -185,62 +120,8 @@ func (c *Client) Read() {
 			c.Conn.WriteJSON(ErrorResponse{Message: strToHashStr("error"), Reason: "I don't understand...", Timestamp: time.Now().UnixNano()})
 			continue
 		}
-		switch checkHash(tmp["message"].(string)) {
-		case "registration":
-			{
-				fmt.Println(tmp["playerName"])
-				if _, ok := c.Pool.Clients[c]; ok {
-					c.Conn.WriteJSON(ErrorResponse{Message: strToHashStr("error"), Reason: "you already in the game", Timestamp: time.Now().UnixNano()})
-				} else {
-					c.Pool.Clients[c] = tmp["playerName"].(string)
-					c.Conn.WriteJSON(RegistrationResponse{Message: strToHashStr("registration"), PlayerName: tmp["playerName"].(string), Timestamp: int64(tmp["timestamp"].(float64)), GameId: c.Pool.GameId})
+		gameLogic(c, tmp)
 
-				}
-				break
-			}
-		case "guess":
-			{
-				if _, ok := c.Pool.Clients[c]; !ok {
-					c.Conn.WriteJSON(ErrorResponse{Message: strToHashStr("error"), Reason: "register to join the game", Timestamp: time.Now().UnixNano()})
-					continue
-				}
-
-				fmt.Println(tmp["gameId"])
-				if int64(tmp["gameId"].(float64)) != c.Pool.GameId {
-					c.Conn.WriteJSON(ErrorResponse{Message: strToHashStr("error"), Reason: "no such gameId", Timestamp: time.Now().UnixNano()})
-					continue
-				}
-				// num, _ := strconv.Atoi(string(tmp["guess"].(string)))
-				if int(tmp["guess"].(float64)) == c.Pool.Number {
-					fmt.Println("bingo")
-					c.Pool.WinBroadcast <- WinResponse{Message: strToHashStr("win"), Answer: c.Pool.Number, Winner: c.Pool.Clients[c], GameId: c.Pool.GameId}
-				} else if int(tmp["guess"].(float64)) < c.Pool.Number {
-					fmt.Println("ok")
-					c.Conn.WriteJSON(GuessResponse{Message: strToHashStr("guess"), GuessResult: 2, Timestamp: int64(tmp["timestamp"].(float64)), GameId: c.Pool.GameId})
-					// c.Conn.WriteJSON(GuessResponse{Message: "guess", GuessResult: 2,GameId: c.Pool.GameId})
-				} else if int(tmp["guess"].(float64)) > c.Pool.Number {
-					c.Conn.WriteJSON(GuessResponse{Message: strToHashStr("guess"), GuessResult: 1, Timestamp: int64(tmp["timestamp"].(float64)), GameId: c.Pool.GameId})
-					// c.Conn.WriteJSON(GuessResponse{Message: "guess", GuessResult: 1,GameId: c.Pool.GameId})
-				}
-				break
-			}
-		default:
-			{
-				c.Conn.WriteJSON(ErrorResponse{Message: strToHashStr("error"), Reason: "I don't understand...", Timestamp: time.Now().UnixNano()})
-			}
-		}
-
-		num, err := strconv.Atoi(string(p))
-		if c.Pool.Number == num {
-			fmt.Println("ok")
-			// c.Pool.Broadcast <- message
-			newNum := rand.Intn(500)
-			fmt.Println(newNum)
-			c.Pool.Number = newNum
-		} else {
-			// c.Conn.WriteJSON(Message{Type: 1, Body: "DDDD"})
-		}
-		// fmt.Printf("Message Received: %+v\n", message)
 	}
 }
 
