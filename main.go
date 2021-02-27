@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"net/http"
+	"time"
 
 	"interview.com/pkg/websocket"
 )
@@ -19,7 +21,6 @@ func serveWs(pool *websocket.Pool, w http.ResponseWriter, r *http.Request) {
 		Pool: pool,
 	}
 
-	// pool.Register <- client
 	client.Read()
 }
 
@@ -33,6 +34,7 @@ func setupRoutes() {
 }
 
 func main() {
+	rand.Seed(time.Now().UTC().UnixNano())
 	fmt.Println("Distributed Chat App v0.01")
 	setupRoutes()
 	http.ListenAndServe(":8089", nil)

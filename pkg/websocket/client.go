@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
+	// "math/rand"
 	"reflect"
 	"time"
 
@@ -133,8 +133,8 @@ func (pool *Pool) Start() {
 			break
 		case message := <-pool.WinBroadcast:
 			fmt.Println("Broadcast win message and next game message")
-			pool.GameId++
-			pool.Number = rand.Intn(500)
+			// pool.GameId++
+			// pool.Number = rand.Intn(500)
 			for client, _ := range pool.Clients {
 				if err := client.Conn.WriteJSON(message); err != nil {
 					fmt.Println(err)

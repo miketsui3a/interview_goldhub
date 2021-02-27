@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"math/rand"
 	"time"
 )
 
@@ -66,6 +67,8 @@ func gameLogic(c *Client,input map[string]interface{}){
 			}
 			if int(input["guess"].(float64)) == c.Pool.Number {
 				c.Pool.WinBroadcast <- WinResponse{Message: strToHashStr("win"), Answer: c.Pool.Number, Winner: c.Pool.Clients[c], GameId: c.Pool.GameId}
+				c.Pool.GameId++
+				c.Pool.Number = rand.Intn(500)
 			} else if int(input["guess"].(float64)) < c.Pool.Number {
 				c.Conn.WriteJSON(GuessResponse{Message: strToHashStr("guess"), GuessResult: 2, Timestamp: int64(input["timestamp"].(float64)), GameId: c.Pool.GameId})
 			} else if int(input["guess"].(float64)) > c.Pool.Number {
