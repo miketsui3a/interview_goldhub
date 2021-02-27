@@ -34,7 +34,6 @@ func checkHash(hashString string) string {
 }
 
 func gameLogic(c *Client,input map[string]interface{}){
-	fmt.Println("getin")
 	switch checkHash(input["message"].(string)) {
 	case "registration":
 		{
@@ -65,17 +64,12 @@ func gameLogic(c *Client,input map[string]interface{}){
 				c.Conn.WriteJSON(ErrorResponse{Message: strToHashStr("error"), Reason: "no such gameId", Timestamp: time.Now().UnixNano()})
 				return
 			}
-			// num, _ := strconv.Atoi(string(tmp["guess"].(string)))
 			if int(input["guess"].(float64)) == c.Pool.Number {
-				fmt.Println("bingo")
 				c.Pool.WinBroadcast <- WinResponse{Message: strToHashStr("win"), Answer: c.Pool.Number, Winner: c.Pool.Clients[c], GameId: c.Pool.GameId}
 			} else if int(input["guess"].(float64)) < c.Pool.Number {
-				fmt.Println("ok")
 				c.Conn.WriteJSON(GuessResponse{Message: strToHashStr("guess"), GuessResult: 2, Timestamp: int64(input["timestamp"].(float64)), GameId: c.Pool.GameId})
-				// c.Conn.WriteJSON(GuessResponse{Message: "guess", GuessResult: 2,GameId: c.Pool.GameId})
 			} else if int(input["guess"].(float64)) > c.Pool.Number {
 				c.Conn.WriteJSON(GuessResponse{Message: strToHashStr("guess"), GuessResult: 1, Timestamp: int64(input["timestamp"].(float64)), GameId: c.Pool.GameId})
-				// c.Conn.WriteJSON(GuessResponse{Message: "guess", GuessResult: 1,GameId: c.Pool.GameId})
 			}
 			return
 		}
